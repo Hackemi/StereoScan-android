@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#0D1117">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- Top Header & Device Info -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fotogrametría Estéreo (Camera2)"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvDeviceInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="OPPO Find X9 Pro (CPH2791) | Cámara Lógica: ID 0"
+                android:textColor="#8B949E"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvVerificationStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Verificando compatibilidad de sesiones simultáneas..."
+                android:textColor="#58A6FF"
+                android:textSize="12sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- Combination Selection Bar -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PARES DE CÁMARAS FÍSICAS DISPONIBLES:"
+            android:textColor="#8B949E"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
+
+            <Button
+                android:id="@+id/btnPair23"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:text="2 + 3"
+                android:textSize="12sp"
+                android:background="@drawable/bg_btn_primary"
+                android:textColor="#FFFFFF" />
+
+            <Button
+                android:id="@+id/btnPair24"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="2dp"
+                android:text="2 + 4"
+                android:textSize="12sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:textColor="#C9D1D9" />
+
+            <Button
+                android:id="@+id/btnPair34"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="3 + 4"
+                android:textSize="12sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:textColor="#C9D1D9" />
+        </LinearLayout>
+
+        <!-- Dual TextureView Preview Containers (Side-by-side or stacked) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="260dp"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
+
+            <!-- Camera A Preview -->
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_preview_border">
+
+                <TextureView
+                    android:id="@+id/textureViewA"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Badge overlay for Cam A -->
+                <TextView
+                    android:id="@+id/tvBadgeCamA"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="6dp"
+                    android:background="#B30D1117"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="3dp"
+                    android:text="CAM ID: 2 (Física A)"
+                    android:textColor="#58A6FF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <!-- Camera B Preview -->
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_preview_border">
+
+                <TextureView
+                    android:id="@+id/textureViewB"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <!-- Badge overlay for Cam B -->
+                <TextView
+                    android:id="@+id/tvBadgeCamB"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="6dp"
+                    android:background="#B30D1117"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="3dp"
+                    android:text="CAM ID: 3 (Física B)"
+                    android:textColor="#3FB950"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Calibration & Manual Lock Controls (AE & AF) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONTROL ÓPTICO Y BLOQUEO MANUAL (20cm - 80cm)"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Row 1: AE Lock & AF Lock Toggle Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btnToggleAeLock"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:text="🔒 AE: Bloqueado"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_btn_primary"
+                    android:textColor="#FFFFFF" />
+
+                <Button
+                    android:id="@+id/btnToggleAfMode"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="🎯 AF: Manual (Coche)"
+                    android:textSize="12sp"
+                    android:background="@drawable/bg_btn_primary"
+                    android:textColor="#FFFFFF" />
+            </LinearLayout>
+
+            <!-- Row 2: Working Distance Presets for Car Interior (20cm, 35cm, 50cm, 80cm) -->
+            <TextView
+                android:id="@+id/tvFocusDistanceLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Distancia de enfoque manual: 40 cm (2.5 Dp)"
+                android:textColor="#C9D1D9"
+                android:textSize="11sp"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnDist20cm"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="2dp"
+                    android:text="20 cm"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:textColor="#C9D1D9" />
+
+                <Button
+                    android:id="@+id/btnDist40cm"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="2dp"
+                    android:text="40 cm"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_btn_primary"
+                    android:textColor="#FFFFFF" />
+
+                <Button
+                    android:id="@+id/btnDist60cm"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="2dp"
+                    android:text="60 cm"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:textColor="#C9D1D9" />
+
+                <Button
+                    android:id="@+id/btnDist80cm"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="2dp"
+                    android:text="80 cm"
+                    android:textSize="11sp"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:textColor="#C9D1D9" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Big Synchronized Capture Button -->
+        <Button
+            android:id="@+id/btnCapture"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="📸 CAPTURAR PAR ESTÉREO"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_btn_primary"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Status & Saved Files Log Card -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="REGISTRO DE CAPTURA ESTÉREO"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCaptureLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Esperando disparo estéreo sincronizado..."
+                android:textColor="#8B949E"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

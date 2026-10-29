@@ -1,0 +1,6 @@
+{
+  "name": "Stereo Photogrammetry",
+  "description": "Dual physical camera preview and synchronized capture for stereo photogrammetry using Camera2 API on OPPO Find X9 Pro (Android 16 / SDK 36)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
