@@ -21,13 +21,48 @@
             android:padding="12dp"
             android:layout_marginBottom="10dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Fotogrametría Estéreo (Camera2)"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Fotogrametría Estéreo (Camera2)"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <!-- Sensor Spirit Level Indicator (Circle Badge) -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="4dp">
+
+                    <View
+                        android:id="@+id/levelIndicatorDot"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/bg_btn_capture" />
+
+                    <TextView
+                        android:id="@+id/tvLevelStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="NIVELANDO..."
+                        android:textColor="#C9D1D9"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvDeviceInfo"
@@ -47,13 +82,73 @@
                 android:textColor="#58A6FF"
                 android:textSize="12sp"
                 android:fontFamily="monospace" />
+
+            <TextView
+                android:id="@+id/tvResolutionStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Resolución: 640x480 (RAW y JSON listos)"
+                android:textColor="#7EE787"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
         </LinearLayout>
 
-        <!-- Combination Selection Bar -->
+        <!-- PRUEBA INDIVIDUAL DE CÁMARAS FÍSICAS -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="PARES DE CÁMARAS FÍSICAS DISPONIBLES:"
+            android:text="PRUEBA INDIVIDUAL (PANTALLA IZQUIERDA):"
+            android:textColor="#8B949E"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp">
+
+            <Button
+                android:id="@+id/btnTestCam2"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="3dp"
+                android:text="Probar Cámara 2"
+                android:textSize="11sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:textColor="#C9D1D9" />
+
+            <Button
+                android:id="@+id/btnTestCam3"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="2dp"
+                android:text="Probar Cámara 3"
+                android:textSize="11sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:textColor="#C9D1D9" />
+
+            <Button
+                android:id="@+id/btnTestCam4"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:layout_marginStart="3dp"
+                android:text="Probar Cámara 4"
+                android:textSize="11sp"
+                android:background="@drawable/bg_btn_secondary"
+                android:textColor="#C9D1D9" />
+        </LinearLayout>
+
+        <!-- MODO ESTÉREO: PARES DE CÁMARAS FÍSICAS -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MODO ESTÉREO (AMBAS PANTALLAS):"
             android:textColor="#8B949E"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -70,8 +165,8 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="2 + 3"
+                android:layout_marginEnd="3dp"
+                android:text="Par 2 + 3"
                 android:textSize="12sp"
                 android:background="@drawable/bg_btn_primary"
                 android:textColor="#FFFFFF" />
@@ -82,7 +177,7 @@
                 android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginHorizontal="2dp"
-                android:text="2 + 4"
+                android:text="Par 2 + 4"
                 android:textSize="12sp"
                 android:background="@drawable/bg_btn_secondary"
                 android:textColor="#C9D1D9" />
@@ -92,21 +187,21 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="3 + 4"
+                android:layout_marginStart="3dp"
+                android:text="Par 3 + 4"
                 android:textSize="12sp"
                 android:background="@drawable/bg_btn_secondary"
                 android:textColor="#C9D1D9" />
         </LinearLayout>
 
-        <!-- Dual TextureView Preview Containers (Side-by-side or stacked) -->
+        <!-- Dual TextureView Preview Containers (Side-by-side) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="260dp"
+            android:layout_height="250dp"
             android:orientation="horizontal"
             android:layout_marginBottom="10dp">
 
-            <!-- Camera A Preview -->
+            <!-- Camera A Preview (Left) -->
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
@@ -126,16 +221,16 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="top|start"
                     android:layout_margin="6dp"
-                    android:background="#B30D1117"
+                    android:background="#D00D1117"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="3dp"
-                    android:text="CAM ID: 2 (Física A)"
+                    android:text="CAM IZQUIERDA: ID 2"
                     android:textColor="#58A6FF"
                     android:textSize="10sp"
                     android:textStyle="bold" />
             </FrameLayout>
 
-            <!-- Camera B Preview -->
+            <!-- Camera B Preview (Right) -->
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
@@ -148,6 +243,19 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent" />
 
+                <!-- Standby overlay for Single Test Mode -->
+                <TextView
+                    android:id="@+id/tvStandbyCamB"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:visibility="gone"
+                    android:background="#EE0D1117"
+                    android:padding="8dp"
+                    android:text="PANTALLA DERECHA EN ESPERA\n(Prueba individual activa en cámara izquierda)"
+                    android:textColor="#8B949E"
+                    android:textSize="11sp" />
+
                 <!-- Badge overlay for Cam B -->
                 <TextView
                     android:id="@+id/tvBadgeCamB"
@@ -155,17 +263,17 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="top|start"
                     android:layout_margin="6dp"
-                    android:background="#B30D1117"
+                    android:background="#D00D1117"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="3dp"
-                    android:text="CAM ID: 3 (Física B)"
+                    android:text="CAM DERECHA: ID 3"
                     android:textColor="#3FB950"
                     android:textSize="10sp"
                     android:textStyle="bold" />
             </FrameLayout>
         </LinearLayout>
 
-        <!-- Calibration & Manual Lock Controls (AE & AF) -->
+        <!-- Calibration & Manual Inputs for Photogrammetry (Focal length & Baseline) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -177,13 +285,51 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="CONTROL ÓPTICO Y BLOQUEO MANUAL (20cm - 80cm)"
+                android:text="PARÁMETROS DE CALIBRACIÓN Y BLOQUEO ÓPTICO"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:layout_marginBottom="8dp" />
 
-            <!-- Row 1: AE Lock & AF Lock Toggle Buttons -->
+            <!-- Row 1: Focal length & Baseline inputs -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="8dp">
+
+                <EditText
+                    android:id="@+id/etPhysicalFocal"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:hint="Focal Física (mm)"
+                    android:text="24.0"
+                    android:inputType="numberDecimal"
+                    android:textSize="12sp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#8B949E"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:paddingHorizontal="8dp" />
+
+                <EditText
+                    android:id="@+id/etBaseline"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:hint="Baseline (cm)"
+                    android:text="5.5"
+                    android:inputType="numberDecimal"
+                    android:textSize="12sp"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#8B949E"
+                    android:background="@drawable/bg_btn_secondary"
+                    android:paddingHorizontal="8dp" />
+            </LinearLayout>
+
+            <!-- Row 2: AE Lock & AF Lock Toggle Buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -193,32 +339,32 @@
                 <Button
                     android:id="@+id/btnToggleAeLock"
                     android:layout_width="0dp"
-                    android:layout_height="44dp"
+                    android:layout_height="40dp"
                     android:layout_weight="1"
                     android:layout_marginEnd="4dp"
                     android:text="🔒 AE: Bloqueado"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:background="@drawable/bg_btn_primary"
                     android:textColor="#FFFFFF" />
 
                 <Button
                     android:id="@+id/btnToggleAfMode"
                     android:layout_width="0dp"
-                    android:layout_height="44dp"
+                    android:layout_height="40dp"
                     android:layout_weight="1"
                     android:layout_marginStart="4dp"
                     android:text="🎯 AF: Manual (Coche)"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:background="@drawable/bg_btn_primary"
                     android:textColor="#FFFFFF" />
             </LinearLayout>
 
-            <!-- Row 2: Working Distance Presets for Car Interior (20cm, 35cm, 50cm, 80cm) -->
+            <!-- Working Distance Presets -->
             <TextView
                 android:id="@+id/tvFocusDistanceLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Distancia de enfoque manual: 40 cm (2.5 Dp)"
+                android:text="Distancia de enfoque manual: 40 cm (2.50 Dp)"
                 android:textColor="#C9D1D9"
                 android:textSize="11sp"
                 android:layout_marginBottom="4dp" />
@@ -231,44 +377,44 @@
                 <Button
                     android:id="@+id/btnDist20cm"
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="36dp"
                     android:layout_weight="1"
                     android:layout_marginEnd="2dp"
                     android:text="20 cm"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:background="@drawable/bg_btn_secondary"
                     android:textColor="#C9D1D9" />
 
                 <Button
                     android:id="@+id/btnDist40cm"
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="36dp"
                     android:layout_weight="1"
                     android:layout_marginHorizontal="2dp"
                     android:text="40 cm"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:background="@drawable/bg_btn_primary"
                     android:textColor="#FFFFFF" />
 
                 <Button
                     android:id="@+id/btnDist60cm"
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="36dp"
                     android:layout_weight="1"
                     android:layout_marginHorizontal="2dp"
                     android:text="60 cm"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:background="@drawable/bg_btn_secondary"
                     android:textColor="#C9D1D9" />
 
                 <Button
                     android:id="@+id/btnDist80cm"
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="36dp"
                     android:layout_weight="1"
                     android:layout_marginStart="2dp"
                     android:text="80 cm"
-                    android:textSize="11sp"
+                    android:textSize="10sp"
                     android:background="@drawable/bg_btn_secondary"
                     android:textColor="#C9D1D9" />
             </LinearLayout>
@@ -279,9 +425,9 @@
             android:id="@+id/btnCapture"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="📸 CAPTURAR PAR ESTÉREO"
+            android:text="📸 CAPTURAR (JPG + RAW + TXT + JSON)"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textSize="13sp"
             android:textStyle="bold"
             android:background="@drawable/bg_btn_primary"
             android:layout_marginBottom="10dp" />
@@ -297,7 +443,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="REGISTRO DE CAPTURA ESTÉREO"
+                android:text="REGISTRO DE CAPTURA ESTÉREO Y METADATOS"
                 android:textColor="#FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold" />
