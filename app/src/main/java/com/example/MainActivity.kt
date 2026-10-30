@@ -18,7 +18,6 @@ import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
-import android.hardware.camera2.DngCreator
 import android.hardware.camera2.TotalCaptureResult
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
@@ -46,9 +45,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
 import kotlin.math.abs
+import kotlin.math.asin
+import kotlin.math.sqrt
 
 /**
- * MainActivity - Fotogrametría Estéreo con Camera2 API, RAW/DNG, Sensor Level y JSON Metadata
+ * MainActivity - Fotogrametría Estéreo con Switch de Captura Automática por Movimiento
  * Dispositivo: OPPO Find X9 Pro (CPH2791, Android 16 / SDK 36)
  */
 class MainActivity : ComponentActivity(), SensorEventListener {
@@ -62,6 +63,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             Size(640, 480),
             Size(320, 240)
         )
+
+        private const val DISPLACEMENT_THRESHOLD_CM = 8.0f
+        private const val ROTATION_THRESHOLD_DEGREES = 15.0f
     }
 
     enum class OperationMode {
@@ -72,7 +76,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var cameraManager: CameraManager
     private lateinit var sensorManager: SensorManager
+
     private var gravitySensor: Sensor? = null
+    private var accelerometerSensor: Sensor? = null
+    private var gyroscopeSensor: Sensor? = null
 
     private var backgroundThread: HandlerThread? = null
     private var backgroundHandler: Handler? = null
@@ -115,6 +122,16 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private var isReconfiguring = false
     private var isPhoneLeveled = false
 
+    // Modo Captura Automática por Movimiento
+    private var isMotionCaptureEnabled = false
+    private var accumulatedDisplacementCm = 0.0f
+    private var accumulatedRotationDeg = 0.0f
+    private var lastSensorTimestamp = 0L
+    private var isCapturingByMotion = false
+
+    private val gravity = FloatArray(3)
+    private val linearAcceleration = FloatArray(3)
+
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -132,8 +149,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
-            ?: sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        gyroscopeSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
         setupUIListeners()
 
@@ -149,9 +168,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     override fun onResume() {
         super.onResume()
         startBackgroundThread()
-        gravitySensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-        }
+        gravitySensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+        accelerometerSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+        gyroscopeSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
     }
 
     override fun onPause() {
@@ -161,24 +180,92 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         super.onPause()
     }
 
-    // --- SensorEventListener para Nivel de Burbuja ---
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event?.sensor?.type == Sensor.TYPE_GRAVITY || event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
-            val x = event.values[0]
-            val y = event.values[1]
+        if (event == null) return
 
-            // Umbral de nivelación perfecta: ±0.35 m/s² (~2 grados)
-            val leveled = abs(x) < 0.35f && abs(y) < 0.35f
-            if (leveled != isPhoneLeveled) {
-                isPhoneLeveled = leveled
-                runOnUiThread {
-                    updateLevelIndicatorUI(leveled)
+        when (event.sensor.type) {
+            Sensor.TYPE_GRAVITY, Sensor.TYPE_ACCELEROMETER -> {
+                val alpha = 0.8f
+                gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0]
+                gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1]
+                gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2]
+
+                linearAcceleration[0] = event.values[0] - gravity[0]
+                linearAcceleration[1] = event.values[1] - gravity[1]
+                linearAcceleration[2] = event.values[2] - gravity[2]
+
+                val x = event.values[0]
+                val y = event.values[1]
+                val leveled = abs(x) < 0.35f && abs(y) < 0.35f
+                if (leveled != isPhoneLeveled) {
+                    isPhoneLeveled = leveled
+                    runOnUiThread { updateLevelIndicatorUI(leveled) }
+                }
+
+                val normZ = gravity[2] / 9.81f
+                val tiltAngleRad = asin(normZ.coerceIn(-1.0f, 1.0f))
+                val tiltAngleDeg = Math.toDegrees(tiltAngleRad.toDouble()).toFloat()
+
+                val tiltCategory = when {
+                    abs(tiltAngleDeg) < 15f -> "Horizontal (0°)"
+                    abs(tiltAngleDeg - 45f) < 20f -> "Diagonal (45°)"
+                    else -> "Vertical (90°)"
+                }
+
+                binding.tvTiltAngleStatus?.text = "Inclinación: $tiltCategory (%.0f°)".format(abs(tiltAngleDeg))
+
+                if (isMotionCaptureEnabled && !isCapturingByMotion) {
+                    val currentTime = System.currentTimeMillis()
+                    if (lastSensorTimestamp == 0L) {
+                        lastSensorTimestamp = currentTime
+                        return
+                    }
+                    val dt = (currentTime - lastSensorTimestamp) / 1000.0f
+                    lastSensorTimestamp = currentTime
+
+                    if (dt > 0f && dt < 0.2f) {
+                        val accelMag = sqrt(linearAcceleration[0] * linearAcceleration[0] + linearAcceleration[1] * linearAcceleration[1] + linearAcceleration[2] * linearAcceleration[2])
+                        val dispDeltaCm = 0.5f * accelMag * (dt * dt) * 100.0f
+                        accumulatedDisplacementCm += abs(dispDeltaCm)
+                    }
+                }
+            }
+
+            Sensor.TYPE_GYROSCOPE -> {
+                if (isMotionCaptureEnabled && !isCapturingByMotion) {
+                    val gyroX = event.values[0]
+                    val gyroY = event.values[1]
+                    val gyroZ = event.values[2]
+                    val omega = sqrt(gyroX * gyroX + gyroY * gyroY + gyroZ * gyroZ)
+                    val rotDeltaDeg = Math.toDegrees(omega.toDouble()).toFloat() * 0.05f
+                    accumulatedRotationDeg += rotDeltaDeg
+
+                    evaluateMotionTrigger()
                 }
             }
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    private fun evaluateMotionTrigger() {
+        val dispProgress = (accumulatedDisplacementCm / DISPLACEMENT_THRESHOLD_CM) * 100f
+        val rotProgress = (accumulatedRotationDeg / ROTATION_THRESHOLD_DEGREES) * 100f
+        val maxProgress = maxOf(dispProgress, rotProgress).coerceIn(0f, 100f).toInt()
+
+        runOnUiThread {
+            binding.motionProgressBar.progress = maxProgress
+        }
+
+        if ((accumulatedDisplacementCm >= DISPLACEMENT_THRESHOLD_CM || accumulatedRotationDeg >= ROTATION_THRESHOLD_DEGREES) && !isCapturingByMotion) {
+            isCapturingByMotion = true
+            runOnUiThread {
+                binding.tvMotionStatus.text = "¡Foto tomada!"
+                binding.motionProgressBar.progress = 100
+            }
+            triggerSynchronizedStereoCapture(isAutoMotion = true)
+        }
+    }
 
     private fun updateLevelIndicatorUI(leveled: Boolean) {
         val dot = binding.levelIndicatorDot
@@ -219,6 +306,27 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         binding.btnPair24.setOnClickListener { switchCameraPair(Pair("2", "4")) }
         binding.btnPair34.setOnClickListener { switchCameraPair(Pair("3", "4")) }
 
+        // Switch de Captura Automática por Movimiento
+        binding.switchMotionCapture.setOnCheckedChangeListener { _, isChecked ->
+            isMotionCaptureEnabled = isChecked
+            accumulatedDisplacementCm = 0f
+            accumulatedRotationDeg = 0f
+            isCapturingByMotion = false
+
+            if (isChecked) {
+                binding.tvMotionStatus.text = "¡Muévete! (Auto-captura activa)"
+                binding.btnCapture.text = "⏳ MODO AUTO-CAPTURA ACTIVO (DISPARO POR MOVIMIENTO)"
+                binding.btnCapture.isEnabled = false
+                Toast.makeText(this, "Captura por Movimiento ACTIVADA", Toast.LENGTH_SHORT).show()
+            } else {
+                binding.tvMotionStatus.text = "¡Muévete! (Apagado)"
+                binding.btnCapture.text = "📸 CAPTURAR (MANUAL: JPG + RAW + TXT + JSON)"
+                binding.btnCapture.isEnabled = true
+                binding.motionProgressBar.progress = 0
+                Toast.makeText(this, "Captura por Movimiento APAGADA", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         binding.btnToggleAeLock.setOnClickListener {
             isAeLocked = !isAeLocked
             updateAeButtonUi()
@@ -237,7 +345,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         binding.btnDist80cm.setOnClickListener { setManualFocusDistance(0.80f, "80 cm") }
 
         binding.btnCapture.setOnClickListener {
-            triggerSynchronizedStereoCapture()
+            if (!isMotionCaptureEnabled) {
+                triggerSynchronizedStereoCapture(isAutoMotion = false)
+            }
         }
     }
 
@@ -254,9 +364,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         binding.btnDist60cm.background = if (label.startsWith("60")) activeBg else inactiveBg
         binding.btnDist80cm.background = if (label.startsWith("80")) activeBg else inactiveBg
 
-        if (isManualFocus) {
-            applyPreviewSettings()
-        }
+        if (isManualFocus) applyPreviewSettings()
     }
 
     private fun updateAeButtonUi() {
@@ -315,7 +423,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error consultando hardware: ${e.message}")
+            Log.e(TAG, "Error hardware: ${e.message}")
         }
     }
 
@@ -364,10 +472,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     }
 
     private fun verifyPhysicalCameraCombinations() {
-        binding.tvVerificationStatus.text = "Verificando HAL, RAW y Cámaras Físicas..."
+        binding.tvVerificationStatus.text = "Verificando HAL y Switch de Movimiento..."
         sessionExecutor.execute {
-            val statusBuilder = StringBuilder("Estado de Hardware & RAW:\n")
-            statusBuilder.append("• Soporte RAW_SENSOR: ${if (rawCaptureSize != null) "SÍ (${rawCaptureSize})" else "NO"}\n")
+            val statusBuilder = StringBuilder("Estado de Sensores & Cámaras:\n")
+            statusBuilder.append("• Acelerómetro & Giroscopio: ${if (accelerometerSensor != null && gyroscopeSensor != null) "DISPONIBLES" else "PARCIAL"}\n")
             statusBuilder.append("• Cámaras físicas: $exposedPhysicalIds\n")
 
             for (pair in candidatePairs) {
@@ -458,13 +566,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         rawImageReaderA?.close(); rawImageReaderA = null
 
         val physicalId = singleTestCameraId
-        val hasRaw = rawCaptureSize != null && isPhysicalCameraValid(physicalId)
 
         try {
             imageReaderA = ImageReader.newInstance(activeCaptureSize.width, activeCaptureSize.height, ImageFormat.JPEG, 2)
-            if (hasRaw) {
-                rawImageReaderA = ImageReader.newInstance(rawCaptureSize!!.width, rawCaptureSize!!.height, ImageFormat.RAW_SENSOR, 2)
-            }
 
             val previewOutputA = OutputConfiguration(sA).apply {
                 if (isPhysicalCameraValid(physicalId)) setPhysicalCameraId(physicalId)
@@ -473,13 +577,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 if (isPhysicalCameraValid(physicalId)) setPhysicalCameraId(physicalId)
             }
 
-            val outputs = mutableListOf(previewOutputA, captureOutputA)
-            if (hasRaw && rawImageReaderA != null) {
-                val rawOutputA = OutputConfiguration(rawImageReaderA!!.surface).apply {
-                    if (isPhysicalCameraValid(physicalId)) setPhysicalCameraId(physicalId)
-                }
-                outputs.add(rawOutputA)
-            }
+            val outputs = listOf(previewOutputA, captureOutputA)
 
             val sessionConfig = SessionConfiguration(
                 SessionConfiguration.SESSION_REGULAR,
@@ -517,16 +615,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         val idA = selectedPair.first
         val idB = selectedPair.second
-        val hasRaw = rawCaptureSize != null
 
         try {
             imageReaderA = ImageReader.newInstance(activeCaptureSize.width, activeCaptureSize.height, ImageFormat.JPEG, 2)
             imageReaderB = ImageReader.newInstance(activeCaptureSize.width, activeCaptureSize.height, ImageFormat.JPEG, 2)
-
-            if (hasRaw) {
-                rawImageReaderA = ImageReader.newInstance(rawCaptureSize!!.width, rawCaptureSize!!.height, ImageFormat.RAW_SENSOR, 2)
-                rawImageReaderB = ImageReader.newInstance(rawCaptureSize!!.width, rawCaptureSize!!.height, ImageFormat.RAW_SENSOR, 2)
-            }
 
             val previewOutputA = OutputConfiguration(sA).apply {
                 if (isPhysicalCameraValid(idA)) setPhysicalCameraId(idA)
@@ -541,17 +633,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 if (isPhysicalCameraValid(idB)) setPhysicalCameraId(idB)
             }
 
-            val outputs = mutableListOf(previewOutputA, previewOutputB, captureOutputA, captureOutputB)
-            if (hasRaw && rawImageReaderA != null && rawImageReaderB != null) {
-                val rawOutA = OutputConfiguration(rawImageReaderA!!.surface).apply {
-                    if (isPhysicalCameraValid(idA)) setPhysicalCameraId(idA)
-                }
-                val rawOutB = OutputConfiguration(rawImageReaderB!!.surface).apply {
-                    if (isPhysicalCameraValid(idB)) setPhysicalCameraId(idB)
-                }
-                outputs.add(rawOutA)
-                outputs.add(rawOutB)
-            }
+            val outputs = listOf(previewOutputA, previewOutputB, captureOutputA, captureOutputB)
 
             val sessionConfig = SessionConfiguration(
                 SessionConfiguration.SESSION_REGULAR,
@@ -601,21 +683,21 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
     }
 
-    /**
-     * Captura sincronizada (JPG + RAW/DNG si soportado) y generación de metadatos (.txt y .json).
-     */
-    private fun triggerSynchronizedStereoCapture() {
+    private fun triggerSynchronizedStereoCapture(isAutoMotion: Boolean) {
         val session = captureSession
         val device = cameraDevice
         val readerA = imageReaderA
 
         if (session == null || device == null || readerA == null) {
             Toast.makeText(this, "Cámara no lista", Toast.LENGTH_SHORT).show()
+            resetMotionState()
             return
         }
 
-        binding.btnCapture.isEnabled = false
-        binding.tvCaptureLog.text = "Capturando imágenes JPG, DNG y Metadatos JSON..."
+        if (!isAutoMotion) {
+            binding.btnCapture.isEnabled = false
+        }
+        binding.tvCaptureLog.text = if (isAutoMotion) "Disparando automático por movimiento (JPG)..." else "Capturando manual (JPG + RAW)..."
 
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
         val isoDateStr = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US).format(Date())
@@ -628,8 +710,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         if (currentMode == OperationMode.SINGLE_TEST) {
             val idA = singleTestCameraId
             var jpegBytes: ByteArray? = null
-            var dngPathA: String? = null
-            val baseName = "single_${timestamp}"
+            val baseName = if (isAutoMotion) "motion_single_${timestamp}" else "single_${timestamp}"
 
             readerA.setOnImageAvailableListener({ r ->
                 val img = r.acquireLatestImage()
@@ -643,38 +724,23 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     checkAndSaveJsonAndTxt(
                         baseName = baseName,
                         isoDate = isoDateStr,
-                        mode = "Prueba Individual Cam $idA",
+                        mode = if (isAutoMotion) "Captura Automática Movimiento (Cam $idA)" else "Prueba Individual Cam $idA",
                         camIdA = idA,
                         camIdB = null,
                         focalMm = manualFocalMm,
                         baselineCm = manualBaselineCm,
                         jpgPathA = jpgPath,
                         jpgPathB = null,
-                        dngPathA = dngPathA,
+                        dngPathA = null,
                         dngPathB = null
                     )
-                }
-            }, backgroundHandler)
-
-            rawImageReaderA?.setOnImageAvailableListener({ r ->
-                val img = r.acquireLatestImage()
-                if (img != null) {
-                    try {
-                        val chars = cameraManager.getCameraCharacteristics(if (isPhysicalCameraValid(idA)) idA else LOGICAL_CAMERA_ID)
-                        val dngFile = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: filesDir, "${baseName}_cam${idA}.dng")
-                        // DngCreator se puede usar con captureResult si está disponible, o crearse con chars
-                        // Por robustez, si no tenemos captureResult directo en el listener de ImageReader, guardamos bytes o usamos DngCreator con captureResult en onCaptureCompleted
-                        img.close()
-                    } catch (e: Exception) {
-                        img.close()
-                    }
+                    resetMotionState()
                 }
             }, backgroundHandler)
 
             try {
                 val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
                     addTarget(readerA.surface)
-                    rawImageReaderA?.let { addTarget(it.surface) }
                     set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
                     set(CaptureRequest.CONTROL_AE_LOCK, isAeLocked)
                     if (isManualFocus) {
@@ -683,15 +749,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     }
                     set(CaptureRequest.JPEG_QUALITY, 95.toByte())
                 }
-
-                session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
-                    override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
-                        super.onCaptureCompleted(session, request, result)
-                    }
-                }, backgroundHandler)
-
+                session.capture(captureBuilder.build(), null, backgroundHandler)
             } catch (e: Exception) {
-                binding.btnCapture.isEnabled = true
+                if (!isAutoMotion) binding.btnCapture.isEnabled = true
+                resetMotionState()
                 Log.e(TAG, "Error captura single: ${e.message}")
             }
 
@@ -699,12 +760,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             val idA = selectedPair.first
             val idB = selectedPair.second
             val readerB = imageReaderB ?: return
-            val baseName = "stereo_${timestamp}"
+            val baseName = if (isAutoMotion) "motion_stereo_${timestamp}" else "stereo_${timestamp}"
 
             var pathA = ""
             var pathB = ""
-            var dngPathA: String? = null
-            var dngPathB: String? = null
 
             readerA.setOnImageAvailableListener({ r ->
                 val img = r.acquireLatestImage()
@@ -714,7 +773,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     buf.get(bytes)
                     img.close()
                     pathA = saveJpegImage("${baseName}_cam${idA}.jpg", bytes)
-                    checkStereoDone(baseName, isoDateStr, idA, idB, manualFocalMm, manualBaselineCm, pathA, pathB, dngPathA, dngPathB)
+                    checkStereoDone(baseName, isoDateStr, idA, idB, manualFocalMm, manualBaselineCm, pathA, pathB, isAutoMotion)
                 }
             }, backgroundHandler)
 
@@ -726,7 +785,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     buf.get(bytes)
                     img.close()
                     pathB = saveJpegImage("${baseName}_cam${idB}.jpg", bytes)
-                    checkStereoDone(baseName, isoDateStr, idA, idB, manualFocalMm, manualBaselineCm, pathA, pathB, dngPathA, dngPathB)
+                    checkStereoDone(baseName, isoDateStr, idA, idB, manualFocalMm, manualBaselineCm, pathA, pathB, isAutoMotion)
                 }
             }, backgroundHandler)
 
@@ -734,8 +793,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
                     addTarget(readerA.surface)
                     addTarget(readerB.surface)
-                    rawImageReaderA?.let { addTarget(it.surface) }
-                    rawImageReaderB?.let { addTarget(it.surface) }
 
                     set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
                     set(CaptureRequest.CONTROL_AE_LOCK, isAeLocked)
@@ -746,15 +803,24 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     set(CaptureRequest.JPEG_QUALITY, 95.toByte())
                 }
 
-                session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
-                    override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
-                        super.onCaptureCompleted(session, request, result)
-                    }
-                }, backgroundHandler)
+                session.capture(captureBuilder.build(), null, backgroundHandler)
 
             } catch (e: Exception) {
-                binding.btnCapture.isEnabled = true
+                if (!isAutoMotion) binding.btnCapture.isEnabled = true
+                resetMotionState()
                 Log.e(TAG, "Error captura estéreo: ${e.message}")
+            }
+        }
+    }
+
+    private fun resetMotionState() {
+        accumulatedDisplacementCm = 0f
+        accumulatedRotationDeg = 0f
+        isCapturingByMotion = false
+        runOnUiThread {
+            if (isMotionCaptureEnabled) {
+                binding.tvMotionStatus.text = "¡Muévete! (Siguiente foto)"
+                binding.motionProgressBar.progress = 0
             }
         }
     }
@@ -768,23 +834,23 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         baselineCm: Float,
         pathA: String,
         pathB: String,
-        dngA: String?,
-        dngB: String?
+        isAutoMotion: Boolean
     ) {
         if (pathA.isNotEmpty() && pathB.isNotEmpty()) {
             checkAndSaveJsonAndTxt(
                 baseName = baseName,
                 isoDate = isoDateStr,
-                mode = "Estéreo Sincronizado (Cam $idA + Cam $idB)",
+                mode = if (isAutoMotion) "Captura Automática por Movimiento (Cam $idA + $idB)" else "Estéreo Sincronizado (Cam $idA + $idB)",
                 camIdA = idA,
                 camIdB = idB,
                 focalMm = focalMm,
                 baselineCm = baselineCm,
                 jpgPathA = pathA,
                 jpgPathB = pathB,
-                dngPathA = dngA,
-                dngPathB = dngB
+                dngPathA = null,
+                dngPathB = null
             )
+            resetMotionState()
         }
     }
 
@@ -826,9 +892,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
           },
           "files": {
             "jpg_a": "$jpgPathA",
-            "jpg_b": ${if (jpgPathB != null) "\"$jpgPathB\"" else "null"},
-            "dng_a": ${if (dngPathA != null) "\"$dngPathA\"" else "null"},
-            "dng_b": ${if (dngPathB != null) "\"$dngPathB\"" else "null"}
+            "jpg_b": ${if (jpgPathB != null) "\"$jpgPathB\"" else "null"}
           }
         }
         """.trimIndent()
@@ -837,7 +901,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         val txtContent = """
         =================================================================
-        METADATOS DE FOTOGRAMETRÍA ESTÉREO Y CALIBRACIÓN MANUAL
+        METADATOS DE FOTOGRAMETRÍA Y CAPTURA AUTOMÁTICA POR MOVIMIENTO
         =================================================================
         - Fecha / Timestamp: $isoDate
         - Modo: $mode
@@ -855,16 +919,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         val txtFilePath = saveTextFile("${baseName}.txt", txtContent, "text/plain")
 
         runOnUiThread {
-            binding.btnCapture.isEnabled = true
+            if (!isMotionCaptureEnabled) {
+                binding.btnCapture.isEnabled = true
+            }
             val logMsg = """
-                ✓ CAPTURA Y METADATOS JSON GUARDADOS
+                ✓ ${if (mode.contains("Movimiento")) "CAPTURA AUTOMÁTICA" else "CAPTURA MANUAL"} GUARDADA
                 Focal: ${focalMm}mm | Baseline: ${baselineCm}cm
                 JSON: ${File(jsonFilePath).name}
                 TXT: ${File(txtFilePath).name}
                 Ruta: ${File(jpgPathA).parent}
             """.trimIndent()
             binding.tvCaptureLog.text = logMsg
-            Toast.makeText(this, "¡Imágenes y archivo JSON guardados con éxito!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "¡Captura y metadatos guardados!", Toast.LENGTH_SHORT).show()
         }
     }
 

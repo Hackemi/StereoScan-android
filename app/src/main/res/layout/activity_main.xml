@@ -88,10 +88,84 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Resolución: 640x480 (RAW y JSON listos)"
+                android:text="Resolución: 640x480 (Switch de Auto-Captura listo)"
                 android:textColor="#7EE787"
                 android:textSize="11sp"
                 android:fontFamily="monospace" />
+        </LinearLayout>
+
+        <!-- AUTO MOTION CAPTURE PANEL WITH SWITCH -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="CAPTURA AUTOMÁTICA POR MOVIMIENTO"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- Switch interruptor de encendido/apagado -->
+                <Switch
+                    android:id="@+id/switchMotionCapture"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Modo Auto "
+                    android:textColor="#C9D1D9"
+                    android:textSize="12sp"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <!-- Status & Instructions -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <TextView
+                    android:id="@+id/tvMotionStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="¡Muévete! (Apagado)"
+                    android:textColor="#8B949E"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvTiltAngleStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Inclinación: Vertical (0°)"
+                    android:textColor="#8B949E"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- Progress Bar representing movement accumulation -->
+            <ProgressBar
+                android:id="@+id/motionProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/bg_btn_primary" />
         </LinearLayout>
 
         <!-- PRUEBA INDIVIDUAL DE CÁMARAS FÍSICAS -->
@@ -425,7 +499,7 @@
             android:id="@+id/btnCapture"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="📸 CAPTURAR (JPG + RAW + TXT + JSON)"
+            android:text="📸 CAPTURAR (MANUAL: JPG + RAW + TXT + JSON)"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
             android:textStyle="bold"
