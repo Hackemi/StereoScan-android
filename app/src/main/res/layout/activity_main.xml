@@ -379,7 +379,7 @@
                     android:layout_weight="1"
                     android:layout_marginEnd="4dp"
                     android:hint="Focal Física (mm)"
-                    android:text="24.0"
+                    android:text="6.0"
                     android:inputType="numberDecimal"
                     android:textSize="12sp"
                     android:textColor="#FFFFFF"

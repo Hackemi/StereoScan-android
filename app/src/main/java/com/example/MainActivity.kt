@@ -453,6 +453,18 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         updateModeButtonsUi()
         binding.tvStandbyCamB.visibility = View.GONE
 
+        // Asignación automática del Baseline según las medidas reales del OPPO Find X9 Pro:
+        // · Par 2 + 3 (Gran Angular + Normal): 2.0 cm
+        // · Par 3 + 4 (Normal + Teleobjetivo): 2.1 cm
+        // · Par 2 + 4 (Gran Angular + Teleobjetivo): 3.0 cm
+        val baselineCm = when (newPair) {
+            Pair("2", "3") -> "2.0"
+            Pair("3", "4") -> "2.1"
+            Pair("2", "4") -> "3.0"
+            else -> "5.5"
+        }
+        binding.etBaseline.setText(baselineCm)
+
         if (cameraDevice != null) createSessionForCurrentMode()
     }
 
